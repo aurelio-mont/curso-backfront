@@ -48,15 +48,17 @@ class DefaultController extends Controller
             $emailConstraint = new Assert\Email();
             $emailConstraint->message = 'This email isn not valid';
             $validate_email = $this->get('validator')->validate($email, $emailConstraint);
+            //Cifrar password
+            $pwd = hash('sha256', $password);
 
             if ($email != null && count($validate_email) == 0 && $password != null) {
                 
                 $jwt_auth = $this->get(JwtAuth::class);
 
-                if ($getHash == null || $getHash == false) {
-                    $singup = $jwt_auth->singup($email, $password);
+                if ($getHash == null) {
+                    $singup = $jwt_auth->singup($email, $pwd, true );
                 } else {
-                    $singup = $jwt_auth->singup($email, $password, true);
+                    $singup = $jwt_auth->singup($email, $pwd);
                 }
                 return $this->json($singup);
 
@@ -73,13 +75,30 @@ class DefaultController extends Controller
 
     }
 
-    public function pruebasAction()
-    {
-        $em = $this->getDoctrine()->getManager();
-        $userRepo = $em->getRepository('BackendBundle:User');
-        $users = $userRepo->findAll();
-
+    public function pruebasAction(Request $request){
         $helpers = $this->get(Helpers::class);
-        return $helpers->json($users);
+        $jwt_auth = $this->get(JwtAuth::class);
+        $token = $request->get('authorization', null);
+
+        if ($token && $jwt_auth->checkToken($token) == true) {
+            $em = $this->getDoctrine()->getManager();
+            $userRepo = $em->getRepository('BackendBundle:User');
+            $users = $userRepo->findAll();
+
+            
+            $data = array(
+                    'status' => 'success',
+                    'data' => $users
+            );
+        } else {
+            $data = array(
+                    'status' => 'error',
+                    'code' => 400,
+                    'data' => 'autorization not valid'
+            );
+        }
+
+        return $helpers->json($data);
+        
     }
 }

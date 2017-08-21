@@ -1,0 +1,12 @@
+/* You can add global styles to this file, and also import other style files */
+#logo{
+	height: 35px;
+	margin-top: -10px;
+}
+#header{
+	margin-top: 15px;
+}
+
+.no-padding{
+	padding-left: 0;
+}
