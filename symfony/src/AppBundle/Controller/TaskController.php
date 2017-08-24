@@ -113,4 +113,80 @@ class TaskController extends Controller{
         
         return $helpers->json($data);
 	}
+
+    public function tasksAction(Request $request){
+        $helpers = $this->get(Helpers::class);
+        $jwt_auth = $this->get(JwtAuth::class);
+        $token = $request->get('authorization', null);
+        $authCheck = $jwt_auth->checkToken($token);
+
+        if ($authCheck) {
+            $identity = $jwt_auth->checkToken($token);
+            $em = $this->getDoctrine()->getManager();
+            $dql = 'SELECT t FROM BackendBundle:Task t ORDER BY t.id DESC';
+            $query = $em->createQuery($dql);
+            $page = $request->query->getInt('page',1);
+            $paginator = $this->get('knp_paginator');
+            $items_per_page = 10;
+
+            $pagination = $paginator->paginate($query, $page, $items_per_page);
+            $total_items_count = $pagination->getTotalItemCount();
+            $total_pages = ceil($total_items_count / $items_per_page);
+
+            $data = array(
+                'status' => 'success',
+                'code' => 200,
+                'total_items_count' => $total_items_count,
+                'page_actual' => $page,
+                'items_per_page' => $items_per_page,
+                'total_pages' => $total_pages,
+                'data' => $pagination
+             
+            );
+        }else {
+            $data = array(
+                'status' => 'error',
+                'code' => 400,
+                'msg' => 'Athorization not valid'
+            );
+        }
+        return $helpers->json($data);
+    }
+
+    public function taskAction(Request $request, $id = null){
+        $helpers = $this->get(Helpers::class);
+        $jwt_auth = $this->get(JwtAuth::class);
+        $token = $request->get('authorization', null);
+        $authCheck = $jwt_auth->checkToken($token);
+
+        if ($authCheck) {
+            $identity = $jwt_auth->checkToken($token, true);
+
+            $em = $this->getDoctrine()->getManager();
+
+            $task = $task = $em->getRepository('BackendBundle:Task')->findOneBy(array('id' => $id ));
+
+            if ($task && is_object($task) && $identity->sub == $task->getUser()->getId()) {
+                $data = array(
+                    'status' => 'success',
+                    'code' => 200,
+                    'data' => $task
+                );
+            } else {
+                $data = array(
+                    'status' => 'error',
+                    'code' => 404,
+                    'msg' => 'Task not foud'
+                );
+            }
+            
+        }else {
+            $data = array(
+                'status' => 'error',
+                'code' => 400,
+                'msg' => 'Athorization not valid'
+            );
+        }
+        return $helpers->json($data);
+    }
 }
