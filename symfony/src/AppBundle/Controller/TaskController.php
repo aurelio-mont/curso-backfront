@@ -121,9 +121,9 @@ class TaskController extends Controller{
         $authCheck = $jwt_auth->checkToken($token);
 
         if ($authCheck) {
-            $identity = $jwt_auth->checkToken($token);
+            $identity = $jwt_auth->checkToken($token, true);
             $em = $this->getDoctrine()->getManager();
-            $dql = 'SELECT t FROM BackendBundle:Task t ORDER BY t.id DESC';
+            $dql = "SELECT t FROM BackendBundle:Task t WHERE t.user = {$identity->sub} ORDER BY t.id DESC";
             $query = $em->createQuery($dql);
             $page = $request->query->getInt('page',1);
             $paginator = $this->get('knp_paginator');
@@ -257,6 +257,46 @@ class TaskController extends Controller{
                 'dql' => $dql,
                 'data' => $tasks
             );
+        }else {
+            $data = array(
+                'status' => 'error',
+                'code' => 400,
+                'msg' => 'Athorization not valid'
+            );
+        }
+        return $helpers->json($data);
+    }
+
+    public function removeAction(Request $request, $id = null){
+        $helpers = $this->get(Helpers::class);
+        $jwt_auth = $this->get(JwtAuth::class);
+        $token = $request->get('authorization', null);
+        $authCheck = $jwt_auth->checkToken($token);
+
+        if ($authCheck) {
+            $identity = $jwt_auth->checkToken($token, true);
+
+            $em = $this->getDoctrine()->getManager();
+
+            $task = $task = $em->getRepository('BackendBundle:Task')->findOneBy(array('id' => $id ));
+
+            if ($task && is_object($task) && $identity->sub == $task->getUser()->getId()) {
+                $em->remove($task);
+                $em->flush();
+                $data = array(
+                    'status' => 'success',
+                    'code' => 200,
+                    'msg' => 'Task deleted',
+                    'data' => $task
+                );
+            } else {
+                $data = array(
+                    'status' => 'error',
+                    'code' => 404,
+                    'msg' => 'Task not foud'
+                );
+            }
+            
         }else {
             $data = array(
                 'status' => 'error',
